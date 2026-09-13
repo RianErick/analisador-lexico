@@ -1,0 +1,251 @@
+<html>
+<head>
+<title>Analisador Lexico - Trabalho 1</title>
+</head>
+
+<body bgcolor="#cfc8bc" text="#333333" link="#3d5a73" vlink="#5a4a62" alink="#333333">
+
+<center>
+<font face="Comic Sans MS" size="6" color="#4a5343">
+<b>Analisador Lexico</b>
+</font>
+<br>
+<font face="Arial" size="3" color="#555555">
+Trabalho 1 - Compiladores (linguagem tipo Java)
+</font>
+<br>
+<font face="Arial" size="2" color="#6b6356">
+dois buffers + ponteiros begin/forward
+</font>
+</center>
+
+<hr color="#8a8376">
+
+<center>
+<input type="button" value="exemplo sem erro" id="ex-ok">
+<input type="button" value="exemplo com erro" id="ex-err">
+<input type="file" id="file" accept=".java,text/plain">
+<input type="button" value="ANALISAR" id="analyze">
+<br>
+<font face="Courier New" size="2" color="#555555">arquivo: <span id="file-name">sem_erro.java</span></font>
+</center>
+
+<p>
+<table border="2" width="100%" cellpadding="4" cellspacing="2" bgcolor="#bdb6aa">
+<tr>
+<td width="50%" valign="top" bgcolor="#e4dfd4">
+<font face="Arial" size="3" color="#4a5343"><b>Codigo fonte</b></font><br>
+<textarea id="source" cols="60" rows="22" wrap="off" style="width:100%; font-family: Courier New; font-size: 12px; background:#f4f1ea; color:#222;"></textarea>
+</td>
+<td width="50%" valign="top" bgcolor="#ece7dc">
+<font face="Arial" size="3" color="#4a5343"><b>Resultados</b></font><br>
+<font face="Courier New" size="2" color="#000000">
+<div id="stats">
+tokens: 0 &nbsp; ids: 0 &nbsp; keywords: 0 &nbsp; erros: 0
+</div>
+</font>
+<p>
+<font face="Arial" size="2">
+<a href="#" id="tab-tokens">tokens</a> |
+<a href="#" id="tab-simbolos">tabela de simbolos</a> |
+<a href="#" id="tab-erros">erros</a> |
+<a href="#" id="tab-buffers">buffers</a> |
+<a href="#" id="tab-afd">AFD</a>
+</font>
+</p>
+<div id="panel">
+<font face="Arial" size="2" color="#000000">clica em ANALISAR pra ver os tokens</font>
+</div>
+</td>
+</tr>
+</table>
+</p>
+
+<hr color="#8a8376">
+<center>
+<font face="Arial" size="1" color="#666666">
+pagina feita pro trabalho de compiladores - 2026
+</font>
+</center>
+
+<script>
+var EX_OK = "// Exemplo 1 do video: programa sem erro lexico\n" +
+"public class MediaAluno {\n" +
+"    public static void main(String[] args) {\n" +
+"        int nota1 = 8;\n" +
+"        int nota2 = 7;\n" +
+"        float media = 7.5;\n" +
+"        char conceito = 'A';\n" +
+"        String nome = \"Ana\\n\";\n" +
+"\n" +
+"        /* calcula se o aluno passou */\n" +
+"        if (media >= 7.0 && nota1 != 0) {\n" +
+"            media += 0.5;\n" +
+"            return;\n" +
+"        } else {\n" +
+"            while (nota2 < 10) {\n" +
+"                nota2 = nota2 + 1;\n" +
+"            }\n" +
+"        }\n" +
+"    }\n" +
+"}\n";
+
+var EX_ERR = "// Exemplo 2 do video: tres erros lexicos do enunciado\n" +
+"public class NotasInvalidas {\n" +
+"    public static void main(String[] args) {\n" +
+"        // Erro 1: identificador comecando com numero\n" +
+"        int 1nota = 8;\n" +
+"\n" +
+"        // Erro 2: virgula usada como decimal\n" +
+"        float media = 7,5;\n" +
+"\n" +
+"        // Erro 3: string nao terminada\n" +
+"        String nome = \"Ana\n" +
+"    }\n" +
+"}\n";
+
+var AFD = "AFD (bem resumido)\n\n" +
+"S0 -- letra/_ --> ID --> IDENTIFIER ou KEYWORD\n" +
+"S0 -- digito ---> NUM --> INTEGER\n" +
+"                  NUM -- ponto+digito --> FLOAT\n" +
+"                  NUM -- virgula+digito --> ERROR (ex: 3,14)\n" +
+"                  NUM -- letra --> ERROR (ex: 1nota)\n" +
+"S0 -- aspas ----> STRING ou ERROR se nao fechar\n" +
+"S0 -- ' --------> CHAR\n" +
+"// e /* */ = comentario (ignora)\n" +
+"buffers: 2 metades de N=32, ponteiros begin e forward";
+
+var source = document.getElementById("source");
+var panel = document.getElementById("panel");
+var stats = document.getElementById("stats");
+var fileName = document.getElementById("file-name");
+var current = { tokens: [], simbolos: [], erros: [], buffer_eventos: [] };
+var tab = "tokens";
+
+source.value = EX_OK;
+
+document.getElementById("ex-ok").onclick = function() {
+  source.value = EX_OK;
+  fileName.innerHTML = "sem_erro.java";
+};
+
+document.getElementById("ex-err").onclick = function() {
+  source.value = EX_ERR;
+  fileName.innerHTML = "com_erro.java";
+};
+
+document.getElementById("file").onchange = function() {
+  var f = this.files[0];
+  if (!f) return;
+  fileName.innerHTML = f.name;
+  var r = new FileReader();
+  r.onload = function() { source.value = r.result; };
+  r.readAsText(f);
+};
+
+document.getElementById("analyze").onclick = analisar;
+
+document.getElementById("tab-tokens").onclick = function() { tab = "tokens"; render(); return false; };
+document.getElementById("tab-simbolos").onclick = function() { tab = "simbolos"; render(); return false; };
+document.getElementById("tab-erros").onclick = function() { tab = "erros"; render(); return false; };
+document.getElementById("tab-buffers").onclick = function() { tab = "buffers"; render(); return false; };
+document.getElementById("tab-afd").onclick = function() { tab = "afd"; render(); return false; };
+
+function analisar() {
+  var x = new XMLHttpRequest();
+  x.open("POST", "/api/analyze", true);
+  x.setRequestHeader("Content-Type", "application/json");
+  x.onreadystatechange = function() {
+    if (x.readyState == 4) {
+      if (x.status == 200) {
+        current = JSON.parse(x.responseText);
+        render();
+      } else {
+        alert("deu erro na analise");
+      }
+    }
+  };
+  x.send(JSON.stringify({ source: source.value }));
+}
+
+function esc(v) {
+  if (v == null || v == "") return "-";
+  return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function render() {
+  var s = current.estatisticas || {};
+  var nerr = s.erros || 0;
+  var cor = nerr > 0 ? "#8b3a3a" : "#3d6b45";
+  stats.innerHTML = "tokens: " + (s.tokens || 0) +
+    " &nbsp; ids: " + (s.identificadores || 0) +
+    " &nbsp; keywords: " + (s.palavras_chave || 0) +
+    " &nbsp; literais: " + (s.literais || 0) +
+    " &nbsp; ops: " + (s.operadores || 0) +
+    " &nbsp; <font color='" + cor + "'>erros: " + nerr + "</font>";
+
+  if (tab == "tokens") {
+    panel.innerHTML = tabela(
+      ["#", "tipo", "lexema", "atributo", "lin", "col"],
+      current.tokens,
+      function(t, i) {
+        var cor = t.tipo == "ERROR" ? "#e8d6d2" : "#f7f4ee";
+        return "<tr bgcolor='" + cor + "'>" +
+          "<td>" + (i + 1) + "</td>" +
+          "<td><b>" + esc(t.tipo) + "</b></td>" +
+          "<td>" + esc(t.lexema) + "</td>" +
+          "<td>" + esc(t.atributo) + "</td>" +
+          "<td>" + t.linha + "</td>" +
+          "<td>" + t.coluna + "</td></tr>";
+      }
+    );
+  } else if (tab == "simbolos") {
+    panel.innerHTML = tabela(
+      ["identificador", "ocorrencias"],
+      current.simbolos,
+      function(e) {
+        return "<tr bgcolor='#f7f4ee'><td>" + esc(e.identificador) + "</td><td>" + e.ocorrencias + "</td></tr>";
+      }
+    );
+  } else if (tab == "erros") {
+    panel.innerHTML = tabela(
+      ["linha", "coluna", "lexema", "motivo"],
+      current.erros,
+      function(e) {
+        return "<tr bgcolor='#e8d6d2'><td>" + e.linha + "</td><td>" + e.coluna + "</td><td>" + esc(e.lexema) + "</td><td>" + esc(e.atributo) + "</td></tr>";
+      }
+    );
+  } else if (tab == "buffers") {
+    var txt = "<font face='Arial' size='2' color='#000000'>Dois buffers de " + (current.buffer_size || 32) + " bytes. Ponteiros begin e forward.</font>";
+    panel.innerHTML = txt + tabela(
+      ["evento", "detalhe"],
+      current.buffer_eventos,
+      function(e) {
+        return "<tr bgcolor='#f7f4ee'><td>" + esc(e.evento) + "</td><td>" + esc(e.detalhe) + "</td></tr>";
+      }
+    );
+  } else {
+    panel.innerHTML = "<pre>" + esc(AFD) + "</pre>";
+  }
+}
+
+function tabela(headers, rows, renderRow) {
+  if (!rows || rows.length == 0) {
+    return "<font face='Arial' size='2' color='#000000'>nada aqui ainda... aperta ANALISAR</font>";
+  }
+  var html = "<table border='1' cellpadding='3' cellspacing='0' bgcolor='#f7f4ee' width='100%'>";
+  html += "<tr bgcolor='#6b7266'>";
+  for (var i = 0; i < headers.length; i++) {
+    html += "<th><font color='#f4f1ea' face='Arial' size='2'>" + headers[i] + "</font></th>";
+  }
+  html += "</tr>";
+  for (var j = 0; j < rows.length; j++) {
+    html += renderRow(rows[j], j);
+  }
+  html += "</table>";
+  return html;
+}
+</script>
+
+</body>
+</html>
