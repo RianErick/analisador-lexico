@@ -28,6 +28,29 @@ cargo --version
 Na raiz deste projeto:
 
 ```bash
+cargo run
+```
+
+Esse comando inicia a interface web em `http://127.0.0.1:3000`. Na página, é possível editar ou abrir um arquivo `.java`, carregar os três exemplos obrigatórios e visualizar:
+
+- veredito de aceite ou rejeição;
+- trace completo da pilha, entrada e ação;
+- tokens produzidos pelo léxico;
+- erros com linha e coluna;
+- conjuntos FIRST e FOLLOW;
+- células preenchidas da Tabela M;
+- árvore de derivação em pré-ordem;
+- lista numerada de produções.
+
+Para usar outra porta:
+
+```bash
+cargo run -- --addr=127.0.0.1:8080
+```
+
+Para analisar diretamente pelo terminal:
+
+```bash
 cargo run -- exemplos/Exemplo1_Sucesso.java
 ```
 

@@ -5,3 +5,7 @@ edition = "2021"
 description = "Analisador sintatico LL(1) manual para um subconjunto de Java"
 
 [dependencies]
+axum = "0.8"
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
+tower-http = { version = "0.6", features = ["cors"] }

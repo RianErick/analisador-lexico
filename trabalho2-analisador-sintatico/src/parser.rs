@@ -1,14 +1,15 @@
 use crate::grammar::{Grammar, EPSILON};
 use crate::token::{Token, TokenKind};
+use serde::Serialize;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct TraceStep {
     pub stack: String,
     pub input: String,
     pub action: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct SyntaxError {
     pub line: usize,
     pub column: usize,

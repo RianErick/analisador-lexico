@@ -2,15 +2,29 @@ mod grammar;
 mod lexer;
 mod parser;
 mod token;
+mod web;
 
 use grammar::{Grammar, EPSILON};
 use lexer::Lexer;
 use parser::Parser;
 use std::{env, fs, process};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
-    if args.is_empty() || args.iter().any(|a| a == "--help" || a == "-h") {
+    if args.is_empty()
+        || args
+            .iter()
+            .any(|a| a == "--ui" || a == "--web" || a.starts_with("--addr="))
+    {
+        let addr = args
+            .iter()
+            .find_map(|a| a.strip_prefix("--addr="))
+            .unwrap_or("127.0.0.1:3000");
+        web::serve(addr).await;
+        return;
+    }
+    if args.iter().any(|a| a == "--help" || a == "-h") {
         help();
         return;
     }
@@ -156,5 +170,5 @@ fn truncate(text: &str, max: usize) -> String {
 }
 
 fn help() {
-    println!("Analisador sintatico descendente preditivo LL(1) manual\n\nUso:\n  cargo run -- <arquivo.java> [opcoes]\n\nOpcoes:\n  --tokens     mostra a integracao com o analisador lexico\n  --grammar    mostra producoes, FIRST, FOLLOW e Tabela M\n  --tree       mostra a arvore de derivacao em pre-ordem\n  --no-trace   omite o trace passo a passo\n  -h, --help   mostra esta ajuda");
+    println!("Analisador sintatico descendente preditivo LL(1) manual\n\nUso:\n  cargo run                                  abre a interface web\n  cargo run -- --ui                         abre a interface web\n  cargo run -- --addr=127.0.0.1:8080        escolhe o endereco\n  cargo run -- <arquivo.java> [opcoes]       analisa pelo terminal\n\nOpcoes da CLI:\n  --tokens     mostra a integracao com o analisador lexico\n  --grammar    mostra producoes, FIRST, FOLLOW e Tabela M\n  --tree       mostra a arvore de derivacao em pre-ordem\n  --no-trace   omite o trace passo a passo\n  -h, --help   mostra esta ajuda");
 }
