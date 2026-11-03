@@ -115,20 +115,21 @@ Os comandos com exemplos inválidos terminam com código de saída `1`, proposit
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `Cargo.toml` | Metadados do pacote Rust. O projeto não depende de bibliotecas externas. |
+| `Cargo.toml` | Metadados do pacote Rust e dependências do servidor web. |
 | `Cargo.lock` | Registra a resolução reproduzível do pacote pelo Cargo. |
 | `src/main.rs` | Interface de terminal: lê argumentos e arquivo `.java`, chama léxico e parser e imprime tokens, gramática, trace, árvore e veredito. |
 | `src/token.rs` | Define `TokenKind` e `Token`; faz a ponte entre tokens concretos e terminais abstratos `id`, `num` e `$`. |
 | `src/lexer.rs` | Analisador léxico manual: reconhece palavras-chave, identificadores, números, operadores e delimitadores; ignora espaços e comentários. |
 | `src/grammar.rs` | Declara as produções e calcula automaticamente não-terminais, terminais, FIRST, FOLLOW e a Tabela M. |
 | `src/parser.rs` | Executa o algoritmo LL(1) com pilha, produz trace, árvore, mensagens de erro e recuperação em modo pânico. |
+| `src/web.rs` | Servidor HTTP e endpoint que conecta a interface ao léxico, gramática e parser. |
+| `static/index.html` | Frontend para editar/abrir arquivos Java e explorar tokens, trace, erros, FIRST/FOLLOW, Tabela M e árvore. |
 | `exemplos/Exemplo1_Sucesso.java` | Programa válido exigido pelo enunciado. |
 | `exemplos/Exemplo2_ErroTabela.java` | Operador `+` sem operando: consulta vazia em `M[T, )]`. |
 | `exemplos/Exemplo3_ErroPilha.java` | Parêntese não fechado: topo espera `)`, mas a entrada contém `;`. |
 | `exemplos/Exemplo4_MultiplosErros.java` | Caso extra para demonstrar recuperação e múltiplos diagnósticos. |
-| `ROTEIRO_VIDEO_10_MIN.md` | Texto cronometrado, comandos e fluxo de telas para a gravação. |
 
-`target/` é criado automaticamente pelo Cargo e não precisa ser enviado. Envie o código-fonte, `Cargo.toml`, `Cargo.lock`, exemplos, README e roteiro.
+`target/` é criado automaticamente pelo Cargo e não precisa ser enviado. Envie o código-fonte, `Cargo.toml`, `Cargo.lock`, exemplos e README.
 
 ## Resumo do algoritmo
 
